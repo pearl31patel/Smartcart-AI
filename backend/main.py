@@ -131,7 +131,6 @@ async def fetch_serpapi_product(item: str, store: str, zip_code: str):
         unit = "custom"
 
     brand_hint = get_store_brand_hint(item_key, store)
-
     query = f"{base_query} {brand_hint} {store} grocery near {zip_code}"
 
     url = "https://serpapi.com/search.json"
@@ -140,6 +139,13 @@ async def fetch_serpapi_product(item: str, store: str, zip_code: str):
         "engine": "google_shopping",
         "q": query,
         "api_key": SERP_API_KEY,
+    }
+
+    store_sources = {
+        "Walmart": ["walmart"],
+        "Target": ["target"],
+        "Costco": ["costco"],
+        "Amazon Fresh": ["amazon", "amazon fresh"],
     }
 
     try:
@@ -153,6 +159,21 @@ async def fetch_serpapi_product(item: str, store: str, zip_code: str):
         for product in results[:30]:
             title = product.get("title", "")
             title_lower = title.lower()
+
+            source = (
+                product.get("source")
+                or product.get("seller")
+                or product.get("merchant")
+                or ""
+            )
+
+            source_lower = source.lower()
+            allowed_sources = store_sources.get(store, [])
+
+            if allowed_sources and not any(
+                allowed_source in source_lower for allowed_source in allowed_sources
+            ):
+                continue
 
             matched_words = sum(
                 1 for keyword in keywords if keyword.lower() in title_lower
@@ -169,6 +190,7 @@ async def fetch_serpapi_product(item: str, store: str, zip_code: str):
             valid_products.append(
                 {
                     "store": store,
+                    "seller": source,
                     "name": title,
                     "price": price,
                     "unit": unit,
@@ -189,7 +211,6 @@ async def fetch_serpapi_product(item: str, store: str, zip_code: str):
     except Exception as error:
         print(f"Error fetching {item} from {store}: {error}")
         return None
-
 
 async def get_prices_for_item(item: str, zip_code: str):
     stores = ["Walmart", "Target", "Costco", "Amazon Fresh"]
@@ -246,6 +267,7 @@ async def compare_groceries(request: GroceryRequest):
                 "price": cheapest["price"],
                 "unit": cheapest["unit"],
                 "data_source": cheapest["data_source"],
+                "seller": cheapest.get("seller"),
                 "image": cheapest["image"],
                 "link": cheapest["link"],
             }

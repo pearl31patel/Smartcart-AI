@@ -4,7 +4,7 @@ SmartCart AI is an AI-powered grocery comparison platform that helps users find 
 
 The app compares real grocery prices using live shopping data and recommends the best store for each product based on price and product matching.
 
----
+![image alt](https://github.com/pearl31patel/Smartcart-AI/blob/bce8db0acd3ed173fcd5efbea283df824cfd02e2/myimg.jpeg)
 
 API Docs:  
 https://smartcart-ai-11vj.onrender.com/docs

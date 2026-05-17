@@ -240,8 +240,15 @@ async def fetch_serpapi_product(item: str, store: str, zip_code: str):
         if not valid_products:
             return None
 
-        valid_products.sort(key=lambda x: (-x["match_score"], x["price"]))
-        return valid_products[0]
+        best_score = max(product["match_score"] for product in valid_products)
+
+        best_matches = [
+            product
+            for product in valid_products
+                if product["match_score"] >= best_score - 2
+        ]
+
+        return min(best_matches, key=lambda x: x["price"])
 
     except Exception as error:
         print(f"Error fetching {item} from {store}: {error}")

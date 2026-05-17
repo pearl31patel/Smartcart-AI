@@ -100,19 +100,6 @@ def normalize_grocery_query(item: str):
 
     return text
 
-
-def get_store_brand_hint(item_key: str, store: str):
-    if "bread" in item_key:
-        hints = {
-            "Walmart": "Great Value",
-            "Target": "Market Pantry Good & Gather",
-            "Costco": "Kirkland",
-            "Amazon Fresh": "Amazon Fresh",
-        }
-        return hints.get(store, "")
-
-    return ""
-
 def score_product_match(item_key: str, title: str, source: str, store: str):
     title_lower = title.lower()
     source_lower = source.lower()
@@ -179,8 +166,7 @@ async def fetch_serpapi_product(item: str, store: str, zip_code: str):
         keywords = item_key.split()
         unit = "custom"
 
-    brand_hint = get_store_brand_hint(item_key, store)
-    query = f"{base_query} {brand_hint} {store} grocery near {zip_code}"
+    query = f"{base_query} {store} grocery near {zip_code}"
 
     url = "https://serpapi.com/search.json"
 

@@ -67,135 +67,29 @@ def clean_price(price_text: str):
     except ValueError:
         return None
 
+
 def normalize_grocery_query(item: str):
     text = item.lower().strip()
     words = text.split()
 
     unit_rules = {
-    # Dairy
-    "milk": "gallon",
-    "almond milk": "half gallon",
-    "oat milk": "half gallon",
-    "soy milk": "half gallon",
-    "cream": "pint",
-    "half and half": "quart",
-    "yogurt": "oz",
-    "cheese": "oz",
-    "butter": "lb",
-    "sour cream": "oz",
-    "cottage cheese": "oz",
-
-    # Eggs
-    "egg": "count",
-    "eggs": "count",
-
-    # Meat / Seafood
-    "chicken": "lb",
-    "chicken breast": "lb",
-    "chicken thighs": "lb",
-    "ground beef": "lb",
-    "beef": "lb",
-    "steak": "lb",
-    "pork": "lb",
-    "bacon": "oz",
-    "turkey": "lb",
-    "ground turkey": "lb",
-    "sausage": "oz",
-    "salmon": "lb",
-    "shrimp": "lb",
-    "tilapia": "lb",
-    "fish": "lb",
-
-    # Grains / Pantry
-    "rice": "lb",
-    "white rice": "lb",
-    "brown rice": "lb",
-    "flour": "lb",
-    "sugar": "lb",
-    "brown sugar": "lb",
-    "pasta": "oz",
-    "spaghetti": "oz",
-    "macaroni": "oz",
-    "noodles": "oz",
-    "oats": "oz",
-    "cereal": "oz",
-    "bread": "loaf",
-    "bagels": "count",
-    "tortillas": "count",
-    "english muffins": "count",
-
-    # Produce
-    "apple": "lb",
-    "apples": "lb",
-    "banana": "lb",
-    "bananas": "lb",
-    "orange": "lb",
-    "oranges": "lb",
-    "grapes": "lb",
-    "strawberries": "lb",
-    "blueberries": "oz",
-    "avocado": "count",
-    "avocados": "count",
-    "potato": "lb",
-    "potatoes": "lb",
-    "onion": "lb",
-    "onions": "lb",
-    "tomato": "lb",
-    "tomatoes": "lb",
-    "carrot": "lb",
-    "carrots": "lb",
-    "lettuce": "head",
-    "spinach": "oz",
-    "broccoli": "lb",
-    "cucumber": "count",
-    "cucumbers": "count",
-    "bell pepper": "count",
-    "bell peppers": "count",
-
-    # Canned / Jar
-    "beans": "oz",
-    "black beans": "oz",
-    "kidney beans": "oz",
-    "corn": "oz",
-    "tuna": "oz",
-    "soup": "oz",
-    "pasta sauce": "oz",
-    "peanut butter": "oz",
-    "jam": "oz",
-    "jelly": "oz",
-
-    # Frozen
-    "frozen pizza": "count",
-    "frozen vegetables": "oz",
-    "frozen fruit": "oz",
-    "ice cream": "oz",
-
-    # Drinks
-    "water": "pack",
-    "sparkling water": "pack",
-    "soda": "pack",
-    "juice": "oz",
-    "coffee": "oz",
-    "tea": "count",
-
-    # Snacks
-    "chips": "oz",
-    "cookies": "oz",
-    "crackers": "oz",
-    "granola bars": "count",
-    "popcorn": "oz",
-
-    # Household
-    "toilet paper": "rolls",
-    "paper towels": "rolls",
-    "trash bags": "count",
-    "laundry detergent": "fl oz",
-    "dish soap": "fl oz",
-    "hand soap": "fl oz",
-    "shampoo": "fl oz",
-    "conditioner": "fl oz",
-    "toothpaste": "oz",
-}
+        "rice": "lb",
+        "flour": "lb",
+        "sugar": "lb",
+        "chicken": "lb",
+        "beef": "lb",
+        "pork": "lb",
+        "eggs": "count",
+        "egg": "count",
+        "water": "pack",
+        "milk": "gallon",
+        "bread": "loaf",
+        "potato": "lb",
+        "potatoes": "lb",
+        "onion": "lb",
+        "onions": "lb",
+        "juice": "oz",
+    }
 
     if len(words) >= 2 and words[-1].isdigit():
         number = words[-1]
@@ -206,6 +100,20 @@ def normalize_grocery_query(item: str):
 
     return text
 
+
+def get_store_brand_hint(item_key: str, store: str):
+    if "bread" in item_key:
+        hints = {
+            "Walmart": "Great Value",
+            "Target": "Market Pantry Good & Gather",
+            "Costco": "Kirkland",
+            "Amazon Fresh": "Amazon Fresh",
+        }
+        return hints.get(store, "")
+
+    return ""
+
+
 async def fetch_serpapi_product(item: str, store: str, zip_code: str):
     if not SERP_API_KEY:
         return None
@@ -214,13 +122,17 @@ async def fetch_serpapi_product(item: str, store: str, zip_code: str):
     rule = SEARCH_RULES.get(item_key)
 
     if rule:
-        query = f'{rule["query"]} {store} near {zip_code}'
+        base_query = rule["query"]
         keywords = rule["keywords"]
         unit = rule["unit"]
     else:
-        query = f"{item_key} {store} grocery near {zip_code}"
+        base_query = item_key
         keywords = item_key.split()
         unit = "custom"
+
+    brand_hint = get_store_brand_hint(item_key, store)
+
+    query = f"{base_query} {brand_hint} {store} grocery near {zip_code}"
 
     url = "https://serpapi.com/search.json"
 
@@ -238,7 +150,7 @@ async def fetch_serpapi_product(item: str, store: str, zip_code: str):
         results = data.get("shopping_results", [])
         valid_products = []
 
-        for product in results[:15]:
+        for product in results[:30]:
             title = product.get("title", "")
             title_lower = title.lower()
 
@@ -277,10 +189,6 @@ async def fetch_serpapi_product(item: str, store: str, zip_code: str):
     except Exception as error:
         print(f"Error fetching {item} from {store}: {error}")
         return None
-
-
-
-
 
 
 async def get_prices_for_item(item: str, zip_code: str):

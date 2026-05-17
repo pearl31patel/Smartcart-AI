@@ -236,12 +236,15 @@ async def fetch_serpapi_product(item: str, store: str, zip_code: str):
             data = response.json()
 
         results = data.get("shopping_results", [])
+        valid_products = []
 
-        for product in results[:10]:
+        for product in results[:15]:
             title = product.get("title", "")
             title_lower = title.lower()
 
-            matched_words = sum(1 for keyword in keywords if keyword.lower() in title_lower)
+            matched_words = sum(
+                1 for keyword in keywords if keyword.lower() in title_lower
+            )
 
             if matched_words == 0:
                 continue
@@ -251,22 +254,33 @@ async def fetch_serpapi_product(item: str, store: str, zip_code: str):
             if price is None:
                 continue
 
-            return {
-                "store": store,
-                "name": title,
-                "price": price,
-                "unit": unit,
-                "price_per_unit": round(price, 2),
-                "data_source": "real_api",
-                "image": product.get("thumbnail"),
-                "link": product.get("link") or product.get("product_link") or product.get("serpapi_product_api"),
-            }
+            valid_products.append(
+                {
+                    "store": store,
+                    "name": title,
+                    "price": price,
+                    "unit": unit,
+                    "price_per_unit": round(price, 2),
+                    "data_source": "real_api",
+                    "image": product.get("thumbnail"),
+                    "link": product.get("link")
+                    or product.get("product_link")
+                    or product.get("serpapi_product_api"),
+                }
+            )
 
-        return None
+        if not valid_products:
+            return None
+
+        return min(valid_products, key=lambda x: x["price"])
 
     except Exception as error:
         print(f"Error fetching {item} from {store}: {error}")
         return None
+
+
+
+
 
 
 async def get_prices_for_item(item: str, zip_code: str):

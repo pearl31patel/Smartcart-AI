@@ -113,6 +113,55 @@ def get_store_brand_hint(item_key: str, store: str):
 
     return ""
 
+def score_product_match(item_key: str, title: str, source: str, store: str):
+    title_lower = title.lower()
+    source_lower = source.lower()
+    words = item_key.split()
+
+    score = 0
+
+    for word in words:
+        if word in title_lower:
+            score += 3
+
+    store_sources = {
+        "Walmart": ["walmart"],
+        "Target": ["target"],
+        "Costco": ["costco"],
+        "Amazon Fresh": ["amazon", "amazon fresh"],
+    }
+
+    allowed_sources = store_sources.get(store, [])
+
+    if allowed_sources and any(s in source_lower for s in allowed_sources):
+        score += 10
+    else:
+        return -999
+
+    bad_words = [
+        "crumb",
+        "crumbs",
+        "crouton",
+        "croutons",
+        "panko",
+        "stuffing",
+        "powder",
+        "candy",
+        "toy",
+        "decor",
+        "holder",
+        "container",
+        "shirt",
+        "poster",
+        "book",
+    ]
+
+    for bad in bad_words:
+        if bad in title_lower and bad not in item_key:
+            score -= 20
+
+    return score
+
 
 async def fetch_serpapi_product(item: str, store: str, zip_code: str):
     if not SERP_API_KEY:
@@ -175,11 +224,9 @@ async def fetch_serpapi_product(item: str, store: str, zip_code: str):
             ):
                 continue
 
-            matched_words = sum(
-                1 for keyword in keywords if keyword.lower() in title_lower
-            )
+            match_score = score_product_match(item_key, title, source, store)
 
-            if matched_words == 0:
+            if match_score < 5:
                 continue
 
             price = clean_price(product.get("price", ""))
@@ -195,6 +242,7 @@ async def fetch_serpapi_product(item: str, store: str, zip_code: str):
                     "price": price,
                     "unit": unit,
                     "price_per_unit": round(price, 2),
+                    "match_score": match_score,
                     "data_source": "real_api",
                     "image": product.get("thumbnail"),
                     "link": product.get("link")
@@ -206,7 +254,8 @@ async def fetch_serpapi_product(item: str, store: str, zip_code: str):
         if not valid_products:
             return None
 
-        return min(valid_products, key=lambda x: x["price"])
+        valid_products.sort(key=lambda x: (-x["match_score"], x["price"]))
+        return valid_products[0]
 
     except Exception as error:
         print(f"Error fetching {item} from {store}: {error}")

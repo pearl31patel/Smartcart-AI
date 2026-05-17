@@ -12,7 +12,7 @@ import {
   Info,
 } from "lucide-react";
 
-const API_URL = "https://smartcart-ai-11vj.onrender.com/";
+const API_URL = "https://smartcart-ai-11vj.onrender.com";
 
 function Header() {
   return (
@@ -154,7 +154,14 @@ export default function App() {
         }),
       });
 
+      if (!response.ok) {
+        throw new Error("Backend error");
+      }
+
       const result = await response.json();
+
+      console.log(result);
+
       setData(result);
     } catch (error) {
       alert("Backend is not running. Please start FastAPI server.");
@@ -316,7 +323,7 @@ export default function App() {
                 </div>
 
                 <div className="mt-6 space-y-4">
-                  {data.cheapest_plan.map((product, index) => (
+                  {data?.cheapest_plan?.map((product, index) => (
                     <motion.div
                       key={index}
                       initial={{ opacity: 0, y: 15 }}
@@ -377,7 +384,7 @@ export default function App() {
             <h2 className="mb-5 text-2xl font-bold">Full Store Comparison</h2>
 
             <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-              {data.results.map((group, index) => (
+              {data?.results?.map((group, index) => (
                 <div key={index} className="rounded-2xl bg-white/10 p-5">
                   <h3 className="mb-4 text-xl font-bold capitalize">
                     {group.item}
